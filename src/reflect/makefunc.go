@@ -82,8 +82,10 @@ func makeFuncStub()
 // Any changes should be reflected in all three.
 type methodValue struct {
 	makeFuncCtxt
-	method int
-	rcvr   Value
+	rcvr     Value
+	rcvrtype *rtype
+	functype *funcType
+	fn       unsafe.Pointer
 }
 
 // makeMethodValue converts v from the rcvr+method index representation
@@ -108,6 +110,8 @@ func makeMethodValue(op string, v Value) Value {
 
 	code := methodValueCallCodePtr()
 
+	rcvrType, valueFuncType, methodFn := methodReceiver(op, rcvr, int(v.flag)>>flagMethodShift)
+
 	// methodValue contains a stack map for use by the runtime
 	_, _, abid := funcLayout(ftyp, nil)
 	fv := &methodValue{
@@ -117,14 +121,11 @@ func makeMethodValue(op string, v Value) Value {
 			argLen:  abid.stackCallArgsSize,
 			regPtrs: abid.inRegPtrs,
 		},
-		method: int(v.flag) >> flagMethodShift,
-		rcvr:   rcvr,
+		rcvr:     rcvr,
+		rcvrtype: rcvrType,
+		functype: valueFuncType,
+		fn:       methodFn,
 	}
-
-	// Cause panic if method is not appropriate.
-	// The panic would still happen during the call if we omit this,
-	// but we want Interface() and other operations to fail early.
-	methodReceiver(op, fv.rcvr, fv.method)
 
 	return Value{&ftyp.rtype, unsafe.Pointer(fv), v.flag&flagRO | flag(Func)}
 }

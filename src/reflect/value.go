@@ -952,8 +952,7 @@ func align(x, n uintptr) uintptr {
 // regs contains the argument values passed in registers and will contain
 // the values returned from ctxt.fn in registers.
 func callMethod(ctxt *methodValue, frame unsafe.Pointer, retValid *bool, regs *abi.RegArgs) {
-	rcvr := ctxt.rcvr
-	rcvrType, valueFuncType, methodFn := methodReceiver("call", rcvr, ctxt.method)
+	rcvr, valueFuncType := ctxt.rcvr, ctxt.functype
 
 	// There are two ABIs at play here.
 	//
@@ -965,7 +964,7 @@ func callMethod(ctxt *methodValue, frame unsafe.Pointer, retValid *bool, regs *a
 	// between the two.
 	_, _, valueABI := funcLayout(valueFuncType, nil)
 	valueFrame, valueRegs := frame, regs
-	methodFrameType, methodFramePool, methodABI := funcLayout(valueFuncType, rcvrType)
+	methodFrameType, methodFramePool, methodABI := funcLayout(valueFuncType, ctxt.rcvrtype)
 
 	// Make a new frame that is one word bigger so we can store the receiver.
 	// This space is used for both arguments and return values.
@@ -1100,7 +1099,7 @@ func callMethod(ctxt *methodValue, frame unsafe.Pointer, retValid *bool, regs *a
 	// Call.
 	// Call copies the arguments from scratch to the stack, calls fn,
 	// and then copies the results back into scratch.
-	call(methodFrameType, methodFn, methodFrame, uint32(methodFrameType.size), uint32(methodABI.retOffset), uint32(methodFrameSize), &methodRegs)
+	call(methodFrameType, ctxt.fn, methodFrame, uint32(methodFrameType.size), uint32(methodABI.retOffset), uint32(methodFrameSize), &methodRegs)
 
 	// Copy return values.
 	//
